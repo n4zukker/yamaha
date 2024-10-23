@@ -18,38 +18,57 @@ declare -r -x pid="${$}"
 SOURCE_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 source "${SOURCE_DIR}/lib/bash-pino-trace.sh"
 source "${SOURCE_DIR}/lib/call-rest.sh"
+source "${SOURCE_DIR}/lib/yamaha.sh"
 
-declare -r API_PATH='http://10.33.20.47/YamahaExtendedControl'
 
-# Usage:
-#   GET {endpoint}
-function GET () {
-  local -r endpoint="$1"
-  shift
-  local -r otherArgs=("$@")
+respJson="$(
+    GET '/v1/netusb/getPlayInfo' \
+  | runJq '
+      def tobits:
+        def stream:
+          recurse(if . > 0 then ./2 | floor else empty end) | . % 2
+        ;
 
-  local -r method='GET'
-  local -r curlMethodArgs=(
-    '--get'
-    '--header' 'Accept: application/json'
-  )
+      if . == 0 then
+        [0]
+      else
+        [stream] | reverse | .[1:]
+      end
+    ;
 
-  curlMethod '--url' "${API_PATH}${endpoint}" "${otherArgs[@]}"
-}
-
-# Usage:
-#   POST {endpoint}
-function POST () {
-  local -r endpoint="$1"
-  shift
-  local -r otherArgs=("$@")
-
-  local -r method='POST'
-  local -r curlMethodArgs=(
-  )
-
-  curlMethod '--url' "${API_PATH}${endpoint}" "${otherArgs[@]}"
-}
-
-respJson="$(GET /v1/netusb/getPlayInfo)"
+    ( [
+        { playable:        "Playable"},
+        { stop:            "Capable of Stop"},
+        { pause:           "Capable of Pause"},
+        { prev:            "Capable of Prev Skip"},
+        { next:            "Capable of Next Skip"},
+        { fastreverse:     "Capable of Fast Reverse"},
+        { fastforward:     "Capable of Fast Forward"},
+        { repeat:          "Capable of Repeat"},
+        { shuffle:         "Capable of Shuffle"},
+        { feedback:        "Feedback Available (Pandora)"},
+        { thumbsup:        "Thumbs-Up (Pandora)"},
+        { thumbsdown:      "Thumbs-Down (Pandora)"},
+        { video:           "Video (USB)"},
+        { bookmark:        "Capable of Bookmark (Net Radio)"},
+        { dmr:             "DMR Playback (Server)"},
+        { station:         "Station Playback (Rhapsody / Napster)"},
+        { ad:              "AD Playback (Pandora)"},
+        { shared:          "Shared Station (Pandora)"},
+        { addTrack:        "Capable of Add Track (Rhapsody/Napster/Pandora/JUKE/Qobuz)"},
+        { addAlbum:        "Capable of Add Album (Rhapsody / Napster / JUKE)"},
+        { shuffleStation:  "Shuffle Station (Pandora)"},
+        { addChannel:      "Capable of Add Channel (Pandora)"},
+        { sample:          "Sample Playback (JUKE)"},
+        { musicPlay:       "MusicPlay Playback (Server)"},
+        { link:            "Capable of Link Distribution"},
+        { addPlaylist:     "Capable of Add Playlist (Qobuz)"},
+        { addMusicCast:    "Capable of add MusicCast Playlist"}
+      ]
+    ) as $attributeText
+  | .attribute |= ( tobits | reverse | to_entries | map(
+      select ( .value == 1 ) | $attributeText[.key]
+    ) | add )
+  '
+)"
 pinoTrace -u "${fdLog}" 'Response from yamaha' respJson

@@ -20,5 +20,17 @@ source "${SOURCE_DIR}/lib/bash-pino-trace.sh"
 source "${SOURCE_DIR}/lib/call-rest.sh"
 source "${SOURCE_DIR}/lib/yamaha.sh"
 
-respJson="$(GET /v1/netusb/getPresetInfo)"
+declare -r search="${1}"
+declare -r index="${2:-}"
+
+respJson="$(
+  POST '/v1/netusb/setSearchString' --json "$(
+    jq --arg search "${search}" --arg index "${index}" --null-input '
+        {string: $search}
+      + if $index != "" then {index: ($index | tonumber)} else {} end
+    '
+  )"
+)"
 pinoTrace -u "${fdLog}" 'Response from yamaha' respJson
+
+"${SOURCE_DIR}/get-list-info.sh"

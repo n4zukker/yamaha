@@ -18,40 +18,7 @@ declare -r -x pid="${$}"
 SOURCE_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 source "${SOURCE_DIR}/lib/bash-pino-trace.sh"
 source "${SOURCE_DIR}/lib/call-rest.sh"
-
-declare -r API_PATH='http://10.33.20.47/YamahaExtendedControl'
-
-declare -r presetNum="${1}"
-
-# Usage:
-#   GET {endpoint}
-function GET () {
-  local -r endpoint="$1"
-  shift
-  local -r otherArgs=("$@")
-
-  local -r method='GET'
-  local -r curlMethodArgs=(
-    '--get'
-    '--header' 'Accept: application/json'
-  )
-
-  curlMethod '--url' "${API_PATH}${endpoint}" "${otherArgs[@]}"
-}
-
-# Usage:
-#   POST {endpoint}
-function POST () {
-  local -r endpoint="$1"
-  shift
-  local -r otherArgs=("$@")
-
-  local -r method='POST'
-  local -r curlMethodArgs=(
-  )
-
-  curlMethod '--url' "${API_PATH}${endpoint}" "${otherArgs[@]}"
-}
+source "${SOURCE_DIR}/lib/yamaha.sh"
 
 respJson="$(GET /v1/netusb/storePreset '--data' "num=${presetNum}" )"
 pinoTrace -u "${fdLog}" 'Response from yamaha' respJson
